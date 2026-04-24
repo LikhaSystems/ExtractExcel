@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Excel Filter Tool</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    /* Light Mode */
+    --primary-color: #2563eb;
+    --primary-dark: #1d4ed8;
+    --secondary-color: #64748b;
+    --success-color: #10b981;
+    --danger-color: #ef4444;
+    --warning-color: #f59e0b;
+    --bg-primary: #f8fafc;
+    --bg-secondary: #ffffff;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --border-color: #e2e8f0;
+    --border-light: #f1f5f9;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --radius: 12px;
+}
+
+[data-theme="dark"] {
+    /* Dark Mode */
+    --primary-color: #3b82f6;
+    --primary-dark: #2563eb;
+    --secondary-color: #94a3b8;
+    --success-color: #34d399;
+    --danger-color: #f87171;
+    --warning-color: #fbbf24;
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --border-color: #334155;
+    --border-light: #475569;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+    --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.3), 0 10px 10px -5px rgb(0 0 0 / 0.2);
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+    min-height: 100vh;
+    display: flex;
+    color: var(--text-primary);
+    transition: background 0.3s ease, color 0.3s ease;
+}
+
+.container {
+    display: flex;
+    width: 100%;
+    max-width: 1600px;
+    margin: 0 auto;
+    min-height: 100vh;
+}
+
+/* THEME TOGGLE */
+.theme-toggle {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-lg);
+    z-index: 1000;
+}
+
+.theme-toggle:hover {
+    transform: scale(1.05);
+    border-color: var(--primary-color);
+}
+
+.theme-toggle svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+    transition: transform 0.3s ease;
+}
+
+[data-theme="dark"] .theme-toggle svg.sun {
+    transform: rotate(180deg);
+}
+
+/* SIDEBAR */
+.sidebar {
+    width: 320px;
+    background: var(--bg-secondary);
+    box-shadow: var(--shadow-lg);
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    border-right: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.sidebar-header {
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.sidebar h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.25rem;
+}
+
+.sidebar p {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.label {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+}
+
+.input-wrapper {
+    position: relative;
+}
+
+input[type="file"] {
+    width: 100%;
+    padding: 0.875rem;
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius);
+    background: var(--bg-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+}
+
+input[type="file"]::-webkit-file-upload-button {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-right: 1rem;
+}
+
+input[type="file"]:hover {
+    border-color: var(--primary-color);
+    background: rgba(37, 99, 235, 0.1);
+}
+
+input[type="date"] {
+    width: 100%;
+    padding: 0.875rem 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius);
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+input[type="date"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.btn-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.btn {
+    padding: 0.875rem 1rem;
+    border: none;
+    border-radius: var(--radius);
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: white;
+    box-shadow: var(--shadow-md);
+}
+
+.btn-primary:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+}
+
+.btn-secondary {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border: 2px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+.btn-success {
+    background: var(--success-color);
+    color: white;
+}
+
+.btn-success:hover {
+    background: color-mix(in srgb, var(--success-color) 90%, black);
+}
+
+.btn-stats {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    font-size: 0.75rem;
+    padding: 0.5rem 0.75rem;
+}
+
+/* MAIN CONTENT */
+.main {
+    flex: 1;
+    padding: 2rem;
+    overflow: auto;
+    transition: all 0.3s ease;
+}
+
+.stats-bar {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.stat-card {
+    background: var(--bg-primary);
+    padding: 1.25rem 1.5rem;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border-color);
+    flex: 1;
+    min-width: 200px;
+    transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 0.25rem;
+}
+
+.stat-label {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+table {
+    width: 100%;
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+th {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    padding: 1.25rem 1rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: top;
+    transition: background 0.2s ease;
+}
+
+tr:hover {
+    background: rgba(37, 99, 235, 0.08);
+}
+
+.date-cell {
+    font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+    font-weight: 600;
+    min-width: 140px;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text-secondary);
+}
+
+.empty-state-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.6;
+}
+
+.loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--border-color);
+    border-top: 4px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* RESPONSIVE */
+@media (max-width: 1024px) {
+    .sidebar {
+        width: 280px;
+    }
+}
+
+@media (max-width: 768px) {
+    body {
+        flex-direction: column;
+    }
+    
+    .container {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+        max-width: none;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .main {
+        padding: 1.5rem;
+    }
+    
+    .stats-bar {
+        flex-direction: column;
+    }
+    
+    .btn-group {
+        grid-template-columns: 1fr;
+    }
+    
+    .theme-toggle {
+        top: 1rem;
+        right: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .main {
+        padding: 1rem;
+    }
+    
+    th, td {
+        padding: 0.75rem 0.5rem;
+    }
+}
+</style>
+</head>
+
+<body>
+<!-- THEME TOGGLE -->
+<div class="theme-toggle" onclick="toggleTheme()" title="Toggle Dark Mode">
+    <svg class="sun" viewBox="0 0 20 20">
+        <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/>
+    </svg>
+    <svg class="moon" viewBox="0 0 20 20" style="display: none;">
+        <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
+    </svg>
+</div>
+
+<div class="container">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h1>📊 Excel Filter</h1>
+            <p>Filter and export Excel data by date</p>
+        </div>
+
+        <div class="form-group">
+            <label class="label">Upload Excel Files</label>
+            <div class="input-wrapper">
+                <input type="file" id="fileInput" multiple accept=".xlsx,.xls">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="label">Filter by Date</label>
+            <input type="date" id="dateFilter">
+        </div>
+
+        <div class="btn-group">
+            <button class="btn btn-secondary" onclick="setToday()">
+                📅 Today
+            </button>
+            <button class="btn btn-secondary" onclick="setYesterday()">
+                ⬅️ Yesterday
+            </button>
+        </div>
+
+        <button class="btn btn-primary" onclick="copyData()">
+            📋 Copy Results
+        </button>
+
+        <div id="statsContainer" class="stats-bar" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-number" id="totalRows">0</div>
+                <div class="stat-label">Total Rows</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="filteredRows">0</div>
+                <div class="stat-label">Filtered Rows</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main">
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <span style="margin-left: 1rem; font-size: 1.125rem;">Processing files...</span>
+        </div>
+
+        <table id="resultTable" style="display: none;">
+            <thead>
+                <tr>
+                    <th>Signing Time</th>
+                    <th>Waybill Number</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <div id="emptyState" class="empty-state" style="display: block;">
+            <div class="empty-state-icon">📄</div>
+            <h3>No data yet</h3>
+            <p>Upload Excel files to get started</p>
+        </div>
+    </div>
+</div>
+
+<script>
+let allData = [];
+let isProcessing = false;
+
+// Theme Management
+function toggleTheme() {
+    const html = document.documentElement;
+    const currentTheme = html.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    html.setAttribute('data-theme', newTheme);
+    localStorage.setTheme = newTheme;
+    
+    // Update toggle icons
+    const sunIcon = document.querySelector('.sun');
+    const moonIcon = document.querySelector('.moon');
+    
+    if (newTheme === 'dark') {
+        sunIcon.style.display = 'none';
+        moonIcon.style.display = 'block';
+    } else {
+        sunIcon.style.display = 'block';
+        moonIcon.style.display = 'none';
+    }
+}
+
+// Load saved theme or detect system preference
+document.addEventListener('DOMContentLoaded', () => {
+    const savedTheme = localStorage.getTheme || 
+        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    
+    // Update toggle icons
+    const sunIcon = document.querySelector('.sun');
+    const moonIcon = document.querySelector('.moon');
+    
+    if (savedTheme === 'dark') {
+        sunIcon.style.display = 'none';
+        moonIcon.style.display = 'block';
+    }
+        document.getElementById('emptyState').style.display = 'block';
+    
+    // Listen for system theme changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        if (!localStorage.getTheme) {
+            document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+            updateThemeIcons();
+        }
+    });
+});
+
+function updateThemeIcons() {
+    const html = document.documentElement;
+    const theme = html.getAttribute('data-theme');
+    const sunIcon = document.querySelector('.sun');
+    const moonIcon = document.querySelector('.moon');
+    
+    if (theme === 'dark') {
+        sunIcon.style.display = 'none';
+        moonIcon.style.display = 'block';
+    } else {
+        sunIcon.style.display = 'block';
+        moonIcon.style.display = 'none';
+    }
+}
+
+/* READ FILES */
+document.getElementById('fileInput').addEventListener('change', handleFiles);
+
+function handleFiles(e) {
+    if (isProcessing) return;
+    
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    showLoading(true);
+    allData = [];
+    isProcessing = true;
+
+    Promise.all(files.map(processFile)).then(() => {
+        showLoading(false);
+        renderTable();
+        updateStats(allData.length, allData.length);
+        document.getElementById('resultTable').style.display = 'table';
+        document.getElementById('emptyState').style.display = 'none';
+    }).catch(error => {
+        showLoading(false);
+        console.error('Error processing files:', error);
+        alert('Error processing files. Please try again.');
+    });
+}
+
+function processFile(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            try {
+                const data = new Uint8Array(event.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                workbook.SheetNames.forEach(sheetName => {
+                    const sheet = workbook.Sheets[sheetName];
+                    const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                    
+                    json.forEach(row => {
+                        const colB = row[1]?.toString().trim();
+                        const colE = row[4]?.toString().trim();
+                        
+                        if (colB || colE) {
+                            allData.push({
+                                B: colB,
+                                E: colE,
+                                rawE: row[4] // Keep original for better parsing
+                            });
+                        }
+                    });
+                });
+                resolve();
+            } catch (error) {
+                reject(error);
+            }
+        };
+        reader.onerror = reject;
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+function showLoading(show) {
+    document.getElementById('loading').style.display = show ? 'flex' : 'none';
+    document.getElementById('resultTable').style.display = show ? 'none' : 'table';
+}
+
+/* DATE FILTER */
+document.getElementById('dateFilter').addEventListener('change', renderTable);
+
+/* QUICK DATE BUTTONS */
+function setToday() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('dateFilter').value = today;
+    renderTable();
+}
+
+function setYesterday() {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    document.getElementById('dateFilter').value = d.toISOString().split('T')[0];
+    renderTable();
+}
+
+/* RENDER TABLE */
+function renderTable() {
+    const tbody = document.querySelector("#resultTable tbody");
+    tbody.innerHTML = "";
+    
+    const selectedDate = document.getElementById('dateFilter').value;
+    const filtered = allData.filter(item => {
+        if (!selectedDate) return true;
+        if (!item.E) return false;
+        
+        // Better date parsing
+        let rowDate;
+        if (typeof item.rawE === 'number') {
+            // Excel serial date
+            rowDate = new Date((item.rawE - 25569) * 86400 * 1000);
+        } else {
+            rowDate = new Date(item.E);
+        }
+        
+        if (isNaN(rowDate)) return false;
+        return rowDate.toISOString().split('T')[0] === selectedDate;
+    });
+
+    if (filtered.length === 0 && selectedDate) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="2" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                    No data found for ${new Date(selectedDate).toLocaleDateString()}
+                </td>
+            </tr>
+        `;
+    } else {
+        filtered.forEach(item => {
+            const tr = document.createElement("tr");
+            
+            const tdE = document.createElement("td");
+            tdE.className = "date-cell";
+            tdE.textContent = item.E || "";
+            
+            const tdB = document.createElement("td");
+            tdB.textContent = item.B || "";
+            
+            tr.appendChild(tdE);
+            tr.appendChild(tdB);
+            tbody.appendChild(tr);
+        });
+    }
+
+    updateStats(allData.length, filtered.length);
+}
+
+/* STATS */
+function updateStats(total, filtered) {
+    document.getElementById('totalRows').textContent = total.toLocaleString();
+    document.getElementById('filteredRows').textContent = filtered.toLocaleString();
+    document.getElementById('statsContainer').style.display = total > 0 ? 'flex' : 'none';
+}
+
+/* COPY FUNCTION */
+function copyData() {
+    const selectedDate = document.getElementById('dateFilter').value;
+    const filtered = allData.filter(item => {
+        if (!selectedDate) return true;
+        if (!item.E) return false;
+        
+        let rowDate;
+        if (typeof item.rawE === 'number') {
+            rowDate = new Date((item.rawE - 25569) * 86400 * 1000);
+        } else {
+            rowDate = new Date(item.E);
+        }
+        
+        if (isNaN(rowDate)) return false;
+        return rowDate.toISOString().split('T')[0] === selectedDate;
+    });
+
+    if (filtered.length === 0) {
+        showToast('No data to copy!');
+        return;
+    }
+
+    const text = filtered.map(item => `${item.E || ""}\t${item.B || ""}`).join("\n");
+    
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(() => {
+            showToast('✅ Copied to clipboard!');
+        }).catch(() => fallbackCopy(text));
+    } else {
+        fallbackCopy(text);
+    }
+}
+
+function fallbackCopy(text) {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+    showToast('✅ Copied to clipboard!');
+}
+
+function showToast(message) {
+    const toast = document.createElement('div');
+    toast.textContent = message;
+    toast.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        background: ${getComputedStyle(document.documentElement).getPropertyValue('--success-color')};
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-lg);
+        z-index: 10000;
+        font-weight: 500;
+        transform: translateX(400px);
+        transition: transform 0.3s ease;
+        backdrop-filter: blur(10px);
+    `;
+    document.body.appendChild(toast);
+    
+    requestAnimationFrame(() => toast.style.transform = 'translateX(0)');
+    
+    setTimeout(() => {
+        toast.style.transform = 'translateX(400px)';
+        setTimeout(() => document.body.removeChild(toast), 300);
+    }, 2000);
+}
+</script>
+
+</body>
+</html>
