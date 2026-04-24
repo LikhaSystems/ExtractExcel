@@ -104,9 +104,10 @@ body {
     transform: rotate(180deg);
 }
 
-/* SIDEBAR */
+/* SIDEBAR - FIXED LAYOUT */
 .sidebar {
     width: 320px;
+    min-width: 320px;
     background: var(--bg-secondary);
     box-shadow: var(--shadow-lg);
     padding: 2rem;
@@ -115,6 +116,7 @@ body {
     gap: 1.5rem;
     border-right: 1px solid var(--border-color);
     transition: all 0.3s ease;
+    flex-shrink: 0;
 }
 
 .sidebar-header {
@@ -137,10 +139,22 @@ body {
     font-size: 0.875rem;
 }
 
+.form-section {
+    background: var(--bg-primary);
+    padding: 1.5rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+}
+
 .form-group {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.form-group:last-child {
+    margin-bottom: 0;
 }
 
 .label {
@@ -216,6 +230,7 @@ input[type="date"]:focus {
     justify-content: center;
     gap: 0.5rem;
     text-decoration: none;
+    width: 100%;
 }
 
 .btn-primary {
@@ -243,6 +258,18 @@ input[type="date"]:focus {
     transform: translateY(-1px);
 }
 
+.btn-danger {
+    background: var(--danger-color);
+    color: white;
+    border: 2px solid var(--danger-color);
+}
+
+.btn-danger:hover {
+    background: color-mix(in srgb, var(--danger-color) 90%, black);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+}
+
 .btn-success {
     background: var(--success-color);
     color: white;
@@ -265,6 +292,7 @@ input[type="date"]:focus {
     padding: 2rem;
     overflow: auto;
     transition: all 0.3s ease;
+    min-width: 0;
 }
 
 .stats-bar {
@@ -377,6 +405,7 @@ tr:hover {
 @media (max-width: 1024px) {
     .sidebar {
         width: 280px;
+        min-width: 280px;
     }
 }
 
@@ -391,7 +420,7 @@ tr:hover {
     
     .sidebar {
         width: 100%;
-        max-width: none;
+        min-width: none;
         border-right: none;
         border-bottom: 1px solid var(--border-color);
     }
@@ -438,38 +467,51 @@ tr:hover {
 </div>
 
 <div class="container">
-    <!-- SIDEBAR -->
+    <!-- SIDEBAR - FIXED -->
     <div class="sidebar">
         <div class="sidebar-header">
-            <h1>📊 Excel Filter</h1>
+            <h1>Excel Filter</h1>
             <p>Filter and export Excel data by date</p>
         </div>
 
-        <div class="form-group">
-            <label class="label">Upload Excel Files</label>
-            <div class="input-wrapper">
-                <input type="file" id="fileInput" multiple accept=".xlsx,.xls">
+        <!-- Upload Section -->
+        <div class="form-section">
+            <div class="form-group">
+                <label class="label">Upload Excel Files</label>
+                <div class="input-wrapper">
+                    <input type="file" id="fileInput" multiple accept=".xlsx,.xls">
+                </div>
             </div>
         </div>
 
-        <div class="form-group">
-            <label class="label">Filter by Date</label>
-            <input type="date" id="dateFilter">
+        <!-- Filter Section -->
+        <div class="form-section">
+            <div class="form-group">
+                <label class="label">Filter by Date</label>
+                <input type="date" id="dateFilter">
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="setToday()">
+                    📅 Today
+                </button>
+                <button class="btn btn-secondary" onclick="setYesterday()">
+                    ⬅️ Yesterday
+                </button>
+            </div>
         </div>
 
-        <div class="btn-group">
-            <button class="btn btn-secondary" onclick="setToday()">
-                📅 Today
+        <!-- Action Buttons -->
+        <div class="form-section">
+            <button class="btn btn-primary" onclick="copyData()" id="copyBtn" style="width: 100%; margin-bottom: 1rem;">
+                📋 Copy Results
             </button>
-            <button class="btn btn-secondary" onclick="setYesterday()">
-                ⬅️ Yesterday
+            <button class="btn btn-danger" onclick="clearAll()">
+                🗑️ Clear All
             </button>
         </div>
 
-        <button class="btn btn-primary" onclick="copyData()">
-            📋 Copy Results
-        </button>
-
+        <!-- Stats -->
         <div id="statsContainer" class="stats-bar" style="display: none;">
             <div class="stat-card">
                 <div class="stat-number" id="totalRows">0</div>
@@ -509,8 +551,7 @@ tr:hover {
 
 <script>
 let allData = [];
-let isProcessing = false;
-
+let isProcessing = false
 // Theme Management
 function toggleTheme() {
     const html = document.documentElement;
@@ -548,7 +589,8 @@ document.addEventListener('DOMContentLoaded', () => {
         sunIcon.style.display = 'none';
         moonIcon.style.display = 'block';
     }
-        document.getElementById('emptyState').style.display = 'block';
+    
+    document.getElementById('emptyState').style.display = 'block';
     
     // Listen for system theme changes
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
@@ -574,6 +616,35 @@ function updateThemeIcons() {
     }
 }
 
+/* CLEAR ALL FUNCTION - NEW */
+function clearAll() {
+    if (allData.length === 0 && !document.getElementById('fileInput').value) {
+        showToast('Nothing to clear!');
+        return;
+    }
+
+    // Reset everything
+    allData = [];
+    isProcessing = false;
+    
+    // Clear file input
+    document.getElementById('fileInput').value = '';
+    
+    // Clear date filter
+    document.getElementById('dateFilter').value = '';
+    
+    // Reset UI
+    document.getElementById('resultTable').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'block';
+    document.getElementById('statsContainer').style.display = 'none';
+    document.getElementById('copyBtn').style.display = 'block';
+    
+    // Update stats
+    updateStats(0, 0);
+    
+    showToast('🗑️ All data cleared!');
+}
+
 /* READ FILES */
 document.getElementById('fileInput').addEventListener('change', handleFiles);
 
@@ -588,12 +659,14 @@ function handleFiles(e) {
     isProcessing = true;
 
     Promise.all(files.map(processFile)).then(() => {
+        isProcessing = false;
         showLoading(false);
         renderTable();
         updateStats(allData.length, allData.length);
         document.getElementById('resultTable').style.display = 'table';
         document.getElementById('emptyState').style.display = 'none';
     }).catch(error => {
+        isProcessing = false;
         showLoading(false);
         console.error('Error processing files:', error);
         alert('Error processing files. Please try again.');
